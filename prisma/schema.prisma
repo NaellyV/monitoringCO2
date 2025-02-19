@@ -12,3 +12,21 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model AirQuality {
+  id          Int      @id @default(autoincrement())
+  co2Level    Float
+  timestamp   DateTime @default(now())
+  sensor      Sensor   @relation(fields: [sensorId], references: [id])
+  sensorId    Int
+
+  @@map("air_qualitys")
+}
+
+model Sensor {
+  id          Int         @id @default(autoincrement())
+  location    String
+  airQualities AirQuality[]
+
+  @@map("sensors")
+}
