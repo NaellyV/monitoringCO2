@@ -13,20 +13,13 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model AirQuality {
-  id          Int      @id @default(autoincrement())
-  co2Level    Float
-  timestamp   DateTime @default(now())
-  sensor      Sensor   @relation(fields: [sensorId], references: [id])
-  sensorId    Int
-
-  @@map("air_qualitys")
-}
-
 model Sensor {
   id          Int         @id @default(autoincrement())
+  co2Level    Float //media de 10 em 10 min pro Historico
+  dayMedia    Float
   location    String
-  airQualities AirQuality[]
+  airQuality  String //qualidade do ar
+  timestamp   DateTime @default(now())
 
   @@map("sensors")
 }
