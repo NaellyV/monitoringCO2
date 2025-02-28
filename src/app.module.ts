@@ -4,7 +4,6 @@ import { AppService } from './app.service';
 import { SensorController } from './modules/sensor/sensor.controller';
 
 @Module({
-  imports: [SensorController],
   controllers: [AppController, SensorController],
   providers: [AppService],
 })
