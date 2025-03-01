@@ -16,8 +16,8 @@ datasource db {
 model Sensor {
   id          Int         @id @default(autoincrement())
   co2Level    Float //media de 10 em 10 min pro Historico
-  dayMedia    Float
-  location    String
+  dayMedia    Float //retirar day media pq ja ta calculando
+  location    String?
   airQuality  String //qualidade do ar
   timestamp   DateTime @default(now())
 

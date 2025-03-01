@@ -1,46 +1,71 @@
+// src/modules/sensor/sensor.controller.ts
 import { Controller, Post, Body, Get } from '@nestjs/common';
-
-interface SensorData {
-  status: number;
-  media_eco2: number;
-  qualidade: string;
-  timestamp?: Date; 
-}
+import { PrismaService } from '../../prisma.service';
 
 @Controller('sensor')
 export class SensorController {
-  private historico: SensorData[] = [];
+  constructor(private prisma: PrismaService) {}
 
   @Post()
-  async receberDados(@Body() dados: SensorData) {
-    // Adiciona um timestamp aos dados recebidos
-    const dadosComTimestamp = { ...dados, timestamp: new Date() };
-    this.historico.push(dadosComTimestamp);
+  async receberDados(
+    @Body()
+    dados: {
+      status: number;
+      media_eco2: number;
+      qualidade: string;
+      location: string;
+    },
+  ) {
+    const sensorData = await this.prisma.sensor.create({
+      data: {
+        co2Level: dados.media_eco2,
+        airQuality: dados.qualidade,
+        location: dados.location,
+        dayMedia: dados.media_eco2,
+      },
+    });
 
-    console.log('Dados recebidos:', dadosComTimestamp);
-    return { message: 'Dados armazenados', dados: dadosComTimestamp };
-  }
-
-  @Get('historico')
-  getHistorico() {
-    return this.historico;
+    console.log('Dados recebidos e armazenados:', sensorData);
+    return { message: 'Dados armazenados', dados: sensorData };
   }
 
   @Get('media-diaria')
-  getMediaDiaria() {
+  async getMediaDiaria() {
     const hoje = new Date();
-    const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    const inicioDoDia = new Date(
+      hoje.getFullYear(),
+      hoje.getMonth(),
+      hoje.getDate(),
+    );
 
-    // Filtra os dados do dia atual
-    const dadosDoDia = this.historico.filter(dado => dado.timestamp && dado.timestamp >= inicioDoDia);
+    // Busca os dados do dia atual
+    const dadosDoDia = await this.prisma.sensor.findMany({
+      where: {
+        timestamp: {
+          gte: inicioDoDia,
+        },
+      },
+    });
 
     if (dadosDoDia.length === 0) {
       return { message: 'Nenhum dado disponível para o dia atual' };
     }
 
     // Calcula a média do eCO2
-    const totalECO2 = dadosDoDia.reduce((sum, dado) => sum + dado.media_eco2, 0);
+    const totalECO2 = dadosDoDia.reduce((sum, dado) => sum + dado.co2Level, 0);
     const mediaECO2 = totalECO2 / dadosDoDia.length;
+
+    // Atualiza a média diária no banco de dados
+    await this.prisma.sensor.updateMany({
+      where: {
+        timestamp: {
+          gte: inicioDoDia,
+        },
+      },
+      data: {
+        dayMedia: mediaECO2,
+      },
+    });
 
     return {
       message: 'Média diária calculada',
