@@ -1,4 +1,3 @@
-// src/modules/sensor/sensor.controller.ts
 import { Controller, Post, Body, Get } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
 
@@ -31,47 +30,66 @@ export class SensorController {
 
   @Get('media-diaria')
   async getMediaDiaria() {
-    const hoje = new Date();
-    const inicioDoDia = new Date(
-      hoje.getFullYear(),
-      hoje.getMonth(),
-      hoje.getDate(),
-    );
+  const hoje = new Date();
+  const inicioDaSemana = new Date(
+    hoje.getFullYear(),
+    hoje.getMonth(),
+    hoje.getDate() - hoje.getDay(), 
+  );
 
-    // Busca os dados do dia atual
-    const dadosDoDia = await this.prisma.sensor.findMany({
-      where: {
-        timestamp: {
-          gte: inicioDoDia,
-        },
+  const dadosDaSemana = await this.prisma.sensor.findMany({
+    where: {
+      timestamp: {
+        gte: inicioDaSemana, 
       },
+    },
+  });
+
+  const mediaPorDia = dadosDaSemana.reduce((acc, dado) => {
+    const diaSemana = new Date(dado.timestamp).toLocaleDateString('pt-BR', {
+      weekday: 'short', 
     });
 
-    if (dadosDoDia.length === 0) {
-      return { message: 'Nenhum dado disponível para o dia atual' };
+    if (!acc[diaSemana]) {
+      acc[diaSemana] = { total: 0, count: 0 };
     }
 
-    // Calcula a média do eCO2
-    const totalECO2 = dadosDoDia.reduce((sum, dado) => sum + dado.co2Level, 0);
-    const mediaECO2 = totalECO2 / dadosDoDia.length;
+    acc[diaSemana].total += dado.co2Level;
+    acc[diaSemana].count += 1;
+    return acc;
+  }, {} as Record<string, { total: number; count: number }>);
 
-    // Atualiza a média diária no banco de dados
-    await this.prisma.sensor.updateMany({
-      where: {
-        timestamp: {
-          gte: inicioDoDia,
-        },
-      },
-      data: {
-        dayMedia: mediaECO2,
+  const diasDaSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+  const formattedData = diasDaSemana.map((dia) => ({
+    day: dia,
+    value: mediaPorDia[dia] ? mediaPorDia[dia].total / mediaPorDia[dia].count : 0, 
+  }));
+
+  return {
+    message: 'Média semanal calculada',
+    dados: formattedData,
+  };
+  }
+
+  @Get('ultima-leitura')
+  async getUltimaLeitura() {
+    console.log('Endpoint /ultima-leitura chamado'); 
+    const ultimaLeitura = await this.prisma.sensor.findFirst({
+      orderBy: {
+        timestamp: 'desc',
       },
     });
 
+    if (!ultimaLeitura) {
+      console.log('Nenhuma leitura disponível'); 
+      return { message: 'Nenhuma leitura disponível' };
+    }
+
+    console.log('Última leitura encontrada:', ultimaLeitura); 
     return {
-      message: 'Média diária calculada',
-      media_diaria_eco2: mediaECO2,
-      total_de_leituras: dadosDoDia.length,
-      dados: dadosDoDia,
+      message: 'Última leitura encontrada',
+      dados: ultimaLeitura,
     };
   }
 }
