@@ -48,48 +48,77 @@ export class SensorController {
     }
   }
   @Get('media-diaria')
-  async getMediaDiaria() {
+async getMediaDiaria() {
   const hoje = new Date();
-  const inicioDaSemana = new Date(
-    hoje.getFullYear(),
-    hoje.getMonth(),
-    hoje.getDate() - hoje.getDay(), 
-  );
+  const inicioDoDia = new Date(hoje.setHours(0, 0, 0, 0));
+  const fimDoDia = new Date(hoje.setHours(23, 59, 59, 999));
 
-  const dadosDaSemana = await this.prisma.sensor.findMany({
+  const dadosDoDia = await this.prisma.sensor.findMany({
     where: {
       timestamp: {
-        gte: inicioDaSemana, 
+        gte: inicioDoDia,
+        lte: fimDoDia,
       },
     },
   });
 
-  const mediaPorDia = dadosDaSemana.reduce((acc, dado) => {
-    const diaSemana = new Date(dado.timestamp).toLocaleDateString('pt-BR', {
-      weekday: 'short', 
-    });
+  const total = dadosDoDia.reduce((acc, dado) => acc + dado.co2Level, 0);
+  const media = dadosDoDia.length ? total / dadosDoDia.length : 0;
 
-    if (!acc[diaSemana]) {
-      acc[diaSemana] = { total: 0, count: 0 };
+  return {
+    message: 'Média diária calculada',
+    dados: { day: hoje.toLocaleDateString('pt-BR'), value: media },
+  };
+}
+
+@Get('media-semana')
+async getMediaSemana() {
+  const hoje = new Date();
+  const inicioSemana = new Date(hoje);
+  inicioSemana.setDate(hoje.getDate() - 6);
+  inicioSemana.setHours(0, 0, 0, 0);
+
+  const dadosDaSemana = await this.prisma.sensor.findMany({
+    where: {
+      timestamp: {
+        gte: inicioSemana,
+      },
+    },
+  });
+  console.log("Dados brutos da semana:", dadosDaSemana);
+
+  const agrupadoPorDia = dadosDaSemana.reduce((acc, dado) => {
+    const dia = new Date(dado.timestamp).toLocaleDateString('pt-BR');
+
+    if (!acc[dia]) {
+      acc[dia] = { total: 0, count: 0 };
     }
 
-    acc[diaSemana].total += dado.co2Level;
-    acc[diaSemana].count += 1;
+    acc[dia].total += dado.co2Level;
+    acc[dia].count += 1;
     return acc;
   }, {} as Record<string, { total: number; count: number }>);
 
-  const diasDaSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-
-  const formattedData = diasDaSemana.map((dia) => ({
-    day: dia,
-    value: mediaPorDia[dia] ? mediaPorDia[dia].total / mediaPorDia[dia].count : 0, 
-  }));
+  const formattedData = Object.keys(agrupadoPorDia).map((dia) => {
+    const data = new Date(dia); 
+    const diaSemana = data.toLocaleDateString("pt-BR", { weekday: "short" }); 
+    
+    const media = agrupadoPorDia[dia].total / agrupadoPorDia[dia].count;
+    
+    return {
+      day: diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1).replace(".", ""), 
+      value: parseFloat(media.toFixed(2)), 
+    };
+  });
+  
 
   return {
-    message: 'Média semanal calculada',
+    message: 'Média por dia nos últimos 7 dias',
     dados: formattedData,
   };
-  }
+
+}
+
 
   @Get('ultima-leitura')
   async getUltimaLeitura() {
