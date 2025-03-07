@@ -11,23 +11,42 @@ export class SensorController {
     dados: {
       status: number;
       media_eco2: number;
-      qualidade: string;
       location: string;
     },
   ) {
-    const sensorData = await this.prisma.sensor.create({
-      data: {
-        co2Level: dados.media_eco2,
-        airQuality: dados.qualidade,
-        location: dados.location,
-        dayMedia: dados.media_eco2,
-      },
-    });
+    try {
+      
+      if (!dados.media_eco2 || !dados.location) {
+        throw new Error('Dados incompletos: media_eco2 e location são obrigatórios.');
+      }
 
-    console.log('Dados recebidos e armazenados:', sensorData);
-    return { message: 'Dados armazenados', dados: sensorData };
+     
+      const determinarQualidade = (co2Level: number): string => {
+        if (co2Level <= 1000) return 'Boa';
+        if (co2Level <= 2000) return 'Moderada';
+        return 'Ruim';
+      };
+
+      
+      const qualidadeAr = determinarQualidade(dados.media_eco2);
+
+      
+      const sensorData = await this.prisma.sensor.create({
+        data: {
+          co2Level: dados.media_eco2,
+          airQuality: qualidadeAr, 
+          location: dados.location,
+          dayMedia: dados.media_eco2,
+        },
+      });
+
+      console.log('✅ Dados armazenados com sucesso:', sensorData);
+      return { message: 'Dados armazenados', dados: sensorData };
+    } catch (error) {
+      console.error('❌ Erro ao armazenar os dados:', error.message);
+      return { message: 'Erro ao armazenar os dados', error: error.message };
+    }
   }
-
   @Get('media-diaria')
   async getMediaDiaria() {
   const hoje = new Date();
