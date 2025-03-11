@@ -15,10 +15,10 @@ datasource db {
 
 model Sensor {
   id          Int         @id @default(autoincrement())
-  co2Level    Float //media de 10 em 10 min pro Historico
-  dayMedia    Float //retirar day media pq ja ta calculando
+  co2Level    Float 
+  dayMedia    Float 
   location    String?
-  airQuality  String //qualidade do ar
+  airQuality  String 
   timestamp   DateTime @default(now())
 
   @@map("sensors")

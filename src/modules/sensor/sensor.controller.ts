@@ -7,7 +7,7 @@ export class SensorController {
 
   @Post()
   async receberDados(
-    @Body() { status, media_eco2, location }: { status: number; media_eco2: number; location: string }
+    @Body() { media_eco2, location }: { media_eco2: number; location: string }
   ) {
     if (!media_eco2 || !location) {
       return { message: 'Dados incompletos: media_eco2 e location são obrigatórios.' };
@@ -43,26 +43,44 @@ export class SensorController {
 
   @Get('media-semana')
   async getMediaSemana() {
-    const hoje = new Date();
-    const inicioSemana = new Date(hoje.setDate(hoje.getDate() - 6));
-    inicioSemana.setHours(0, 0, 0, 0);
+    const agora = new Date();
+    const inicioSemana = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate() - 6, 0, 0, 0, 0));
+    const fimSemana = new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate(), 23, 59, 59, 999));
 
-    const dadosDaSemana = await this.prisma.sensor.findMany({ where: { timestamp: { gte: inicioSemana } } });
-
-    const agrupadoPorDia = dadosDaSemana.reduce((acc, dado) => {
-      const dia = new Date(dado.timestamp).toISOString().split('T')[0];
-      acc[dia] = acc[dia] || { total: 0, count: 0 };
-      acc[dia].total += dado.co2Level;
-      acc[dia].count++;
-      return acc;
-    }, {} as Record<string, { total: number; count: number }>);
-
-    const formattedData = Object.entries(agrupadoPorDia).map(([dia, { total, count }]) => {
-      const diaSemana = new Date(dia).toLocaleDateString('pt-BR', { weekday: 'short' });
-      return { day: diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1), value: parseFloat((total / count).toFixed(2)) };
+    const dadosDaSemana = await this.prisma.sensor.findMany({
+      where: { timestamp: { gte: inicioSemana, lte: fimSemana } },
     });
 
-    return { message: 'Média por dia nos últimos 7 dias', dados: formattedData };
+    const agrupadoPorDia: Record<string, { total: number; count: number }> = {};
+
+    for (let i = 0; i < 7; i++) {
+      const data = new Date(inicioSemana);
+      data.setUTCDate(inicioSemana.getUTCDate() + i);
+      const diaFormatado = data.toISOString().split('T')[0];
+      agrupadoPorDia[diaFormatado] = { total: 0, count: 0 };
+    }
+
+    for (const dado of dadosDaSemana) {
+      const dataLeitura = new Date(dado.timestamp);
+      const dia = dataLeitura.toISOString().split('T')[0];
+
+      if (agrupadoPorDia[dia]) {
+        agrupadoPorDia[dia].total += dado.co2Level;
+        agrupadoPorDia[dia].count++;
+      }
+    }
+
+    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+    const formattedData = Object.entries(agrupadoPorDia).map(([dia, { total, count }]) => {
+      const data = new Date(dia);
+      return {
+        day: diasSemana[data.getUTCDay()],
+        value: count > 0 ? parseFloat((total / count).toFixed(2)) : 0,
+      };
+    });
+
+    return { message: 'Média dos últimos 7 dias', dados: formattedData };
   }
 
   @Get('ultima-leitura')
