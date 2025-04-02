@@ -5,6 +5,15 @@ import { PrismaService } from '../../prisma.service';
 export class SensorController {
   constructor(private prisma: PrismaService) {}
 
+  private classificarQualidadeAr(eco2: number): string {
+    if (eco2 < 400) return "Excelente";
+    if (eco2 < 800) return "Boa";
+    if (eco2 < 1000) return "Moderada";
+    if (eco2 < 2000) return "Ruim";
+    if (eco2 < 5000) return "Muito Ruim";
+    return "Perigoso";
+  }
+
   @Post()
   async receberDados(
     @Body() { media_eco2, location }: { media_eco2: number; location: string }
@@ -13,7 +22,7 @@ export class SensorController {
       return { message: 'Dados incompletos: media_eco2 e location são obrigatórios.' };
     }
 
-    const qualidadeAr = media_eco2 <= 1000 ? 'Boa' : media_eco2 <= 2000 ? 'Moderada' : 'Ruim';
+    const qualidadeAr = this.classificarQualidadeAr(media_eco2);
 
     try {
       const sensorData = await this.prisma.sensor.create({
