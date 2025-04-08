@@ -79,7 +79,7 @@ export class SensorController {
       }
     }
 
-    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab'];
 
     const formattedData = Object.entries(agrupadoPorDia).map(([dia, { total, count }]) => {
       const data = new Date(dia);
