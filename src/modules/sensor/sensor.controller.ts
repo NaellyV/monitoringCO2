@@ -97,4 +97,14 @@ export class SensorController {
     const ultimaLeitura = await this.prisma.sensor.findFirst({ orderBy: { timestamp: 'desc' } });
     return ultimaLeitura ? { message: 'Última leitura encontrada', dados: ultimaLeitura } : { message: 'Nenhuma leitura disponível' };
   }
+
+  @Get("historico")
+  async getHistorico(){
+    const historico = await this.prisma.sensor.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: 10,
+    });
+
+    return historico.length ? { message: 'Histórico encontrado', dados: historico } : { message: 'Nenhum dado encontrado' };
+  }
 }
