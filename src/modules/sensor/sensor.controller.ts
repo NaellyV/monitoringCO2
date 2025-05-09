@@ -1,5 +1,7 @@
-import { Controller, Post, Body, Get } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Header, Res } from '@nestjs/common';
 import { PrismaService } from '../../prisma.service';
+import * as PDFDocument from 'pdfkit';
+import { Response } from 'express';
 
 @Controller('sensor')
 export class SensorController {
@@ -97,4 +99,80 @@ export class SensorController {
     const ultimaLeitura = await this.prisma.sensor.findFirst({ orderBy: { timestamp: 'desc' } });
     return ultimaLeitura ? { message: 'Última leitura encontrada', dados: ultimaLeitura } : { message: 'Nenhuma leitura disponível' };
   }
+
+  @Get("historico")
+  async getHistorico(){
+    const historico = await this.prisma.sensor.findMany({
+      orderBy: { timestamp: 'desc' },
+      take: 10,
+    });
+
+    return historico.length ? { message: 'Histórico encontrado', dados: historico } : { message: 'Nenhum dado encontrado' };
+  }
+
+  @Get("grupo/:id")
+async getMedicoesPorGrupo(@Param("id") id: string) {
+  const idNumerico = parseInt(id, 10);
+
+  if (isNaN(idNumerico)) {
+    return { message: "ID inválido. Esperado um número." };
+  }
+
+  const registroBase = await this.prisma.sensor.findUnique({
+    where: { id: idNumerico },
+  });
+
+  if (!registroBase) {
+    return { message: "Registro não encontrado" };
+  }
+
+  const dataBase = new Date(registroBase.timestamp);
+  const inicio = new Date(dataBase.setHours(0, 0, 0, 0));
+  const fim = new Date(dataBase.setHours(23, 59, 59, 999));
+
+  const registros = await this.prisma.sensor.findMany({
+    where: {
+      timestamp: { gte: inicio, lte: fim },
+      location: registroBase.location,
+    },
+    orderBy: { timestamp: 'asc' },
+  });
+
+  return { message: "Medições do grupo", dados: registros };
 }
+
+@Get('grupo/:id/pdf')
+@Header('Content-Type', 'application/pdf')
+@Header('Content-Disposition', 'attachment; filename="grupo.pdf"')
+async baixarPdf(@Param('id') id: string, @Res() res: Response) {
+  const idNumerico = parseInt(id, 10);
+  const base = await this.prisma.sensor.findUnique({ where: { id: idNumerico } });
+
+  if (!base) return res.status(404).send("Grupo não encontrado");
+
+  const data = new Date(base.timestamp);
+  const inicio = new Date(data.setHours(0, 0, 0, 0));
+  const fim = new Date(data.setHours(23, 59, 59, 999));
+
+  const registros = await this.prisma.sensor.findMany({
+    where: { timestamp: { gte: inicio, lte: fim }, location: base.location },
+    orderBy: { timestamp: 'asc' }
+  });
+
+  const doc = new PDFDocument();
+  doc.pipe(res);
+
+  doc.fontSize(16).text(`Medições de CO₂ - ${base.location}`, { align: 'center' });
+  doc.moveDown();
+
+  registros.forEach((r) => {
+    doc.fontSize(12).text(
+      `Hora: ${new Date(r.timestamp).toLocaleTimeString('pt-BR')} | Local: ${r.location} | CO₂: ${r.co2Level} ppm | Qualidade: ${r.airQuality}`
+    );
+  });
+
+  doc.end();
+}
+
+}
+
