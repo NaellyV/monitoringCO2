@@ -1,9 +1,9 @@
-markdown
-
 # 🌬️ API de Monitoramento de Qualidade do Ar
 
 ## 📌 Visão Geral
 API desenvolvida com NestJS para coleta e análise de dados de sensores ENS160 via ESP32, armazenando em PostgreSQL com Prisma ORM.
+
+---
 
 ## 🚀 Rotas da API
 
@@ -35,6 +35,7 @@ CO₂ (ppm)	Classificação	Emoji
 1000-2000	Ruim	⚠️
 2000-5000	Muito Ruim	❗
 > 5000	Perigoso	☠️
+
 🛠️ Configuração
 Pré-requisitos
 
@@ -42,49 +43,24 @@ Pré-requisitos
 
     PostgreSQL
 
-    npm/yarn
+    npm ou yarn
 
-bash
+Passos para Instalação
 
 # 1. Clone o repositório
 git clone [URL_DO_REPOSITORIO]
 
-# 2. Instale dependências
+# 2. Acesse a pasta do projeto
+cd nome-do-projeto
+
+# 3. Instale as dependências
 npm install
 
-# 3. Configure o .env
+# 4. Configure as variáveis de ambiente
 cp .env.example .env
 
-# 4. Execute migrações
+# 5. Execute as migrações
 npx prisma migrate dev
 
-# 5. Inicie a aplicação
+# 6. Inicie a aplicação
 npm run start:dev
-
-🗃️ Modelo de Dados
-prisma
-
-model Sensor {
-  id          Int      @id @default(autoincrement())
-  co2Level    Float
-  airQuality  String
-  location    String
-  timestamp   DateTime @default(now())
-  dayMedia    Float?
-}
-
-🔮 Roadmap
-
-    Autenticação JWT
-
-    Rate Limiting
-
-    Dashboard em tempo real
-
-    Sistema de alertas
-
-    Testes automatizados
-
-📄 Licença
-
-MIT
