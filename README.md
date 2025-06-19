@@ -50,6 +50,7 @@ Pré-requisitos
 
 Passos para Instalação
 
+```
 # 1. Clone o repositório
 git clone [URL_DO_REPOSITORIO]
 
@@ -67,3 +68,5 @@ npx prisma migrate dev
 
 # 6. Inicie a aplicação
 npm run start:dev
+
+```
